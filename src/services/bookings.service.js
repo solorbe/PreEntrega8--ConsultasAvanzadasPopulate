@@ -98,6 +98,10 @@ class BookingsService {
   async updateBooking(bid, data) {
     return this.bookingRepository.update(bid, data);
   }
+
+  async getStatusReport() {
+    return this.bookingRepository.countByStatus();
+  }
 }
 
 // Instancia única compartida por todos los que importen este módulo.

@@ -1,4 +1,4 @@
-# PreEntrega7-HandlebarsWebSockets
+# PreEntrega8-ConsultasAvanzadasPopulate
 
 Es una **API REST modular** de un Sistema de Turnos y Reservas, construida con **Express**.
 La API está organizada en cada una con una única responsabilidad como se comenta en la sección "Flujo de una petición" más abajo.
@@ -30,6 +30,7 @@ npm run dev
 - **`fs`** (más precisamente `fs/promises`) es un módulo **nativo** de Node.js: no aparece en `package.json` ni requiere instalación, ya viene incluido en el runtime.
 - **`handlebars`**: motor de plantillas para renderizar HTML dinámico. Se usa en la carpeta `views/` y se integra con Express a través de `app.engine('handlebars', ...)` en `src/app.js`.
 - **`socket.io`**: permite comunicación bidireccional en tiempo real entre el servidor y los clientes web. Se integra con Express a través de `io.attach(server)` en `src/server.js`.
+- **`mongoose-paginate-v2`**: plugin de Mongoose que agrega un método `Model.paginate()` para paginar resultados de consultas a MongoDB.
 
 ## Flujo de una petición
 
@@ -109,4 +110,81 @@ src/
   public/
     socket.js               # cliente de Socket.IO
     
+```
+
+## Consultas avanzadas, validación y populate
+
+### `GET /api/services`: filtros, paginación y orden
+
+Parámetros opcionales de la query string:
+| Parámetro | Ejemplo | Efecto |
+|---|---|---|
+| `category` | `consulta` | Solo servicios de esa categoría |
+| `available` | `true` / `false` | Solo disponibles / no disponibles |
+| `page` | `2` | Número de página (default `1`) |
+| `limit` | `5` | Servicios por página (default `10`) |
+| `sort` | `asc` / `desc` | Orden por precio ascendente / descendente |
+
+> ⚠️ **El shape de la respuesta cambió.**
+> Antes el `payload` era el array completo.
+> Ahora `payload` es el array **de la página pedida**, y alrededor viene la metadata de paginación:
+> ```json
+> {
+>   "status": "success",
+>   "payload": [ { "_id": "...", "name": "...", "price": 9000 } ],
+>   "totalPages": 2, "page": 1,
+>   "hasPrevPage": false, "hasNextPage": true,
+>   "prevPage": null, "nextPage": 2,
+>   "prevLink": null, "nextLink": "/api/services?page=2&limit=2"
+> }
+> ```
+>
+> Las vistas (`/services`) y los sockets (`/realtime-services`) **no cambian**:
+> siguen usando `getServices()`, con la lista completa.
+>
+> ### Validación con Zod
+
+`POST /api/services` y `POST /api/bookings` pasan primero por el middleware `validateBody(schema)`.
+Si el body no cumple el schema de Zod, se responde `400` **sin llegar al controller ni a la base**:
+
+```json
+{
+  "status": "error",
+  "message": "Datos inválidos",
+  "errors": ["price: Invalid input: expected number, received string"]
+}
+```
+
+Zod **no convierte tipos**: `"price": "8000"` (string) es inválido;
+tiene que ser `8000` (número). Los services quedan solo con las reglas de negocio (por ejemplo, precio no negativo).
+
+### Populate
+
+En la base, cada reserva sigue guardando solo `{ service: <ObjectId>,
+quantity }`
+Al leerla, el DAO hace `.populate('services.service')` y Mongoose reemplaza cada `ObjectId` por el documento completo del
+servicio (algo parecido a un `JOIN` de SQL).
+
+## Cómo probar la API con Postman
+
+Cada recurso trae un `_id` de MongoDB (un `ObjectId`). 
+Con el servidor corriendo http://localhost:8082/api/bookings/report/status
+``` JSON
+{
+    "status": "success",
+    "payload": [
+        {
+            "_id": "completado",
+            "total": 1
+        },
+        {
+            "_id": "confirmado",
+            "total": 1
+        },
+        {
+            "_id": "pending",
+            "total": 12
+        }
+    ]
+}
 ```

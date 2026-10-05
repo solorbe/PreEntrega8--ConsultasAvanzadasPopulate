@@ -3,36 +3,35 @@ import { servicesService } from '../services/services.service.js';
 
 export const getServices = async (req, res) => {
   try {
-    const { category, available } = req.query;
+    // El controller no arma filtros: le pasa al service la query string
+    // tal cual. Traducirla a filtro/opciones de Mongo es tarea del
+    // service.
+    const result = await servicesService.getServicesPaginated(req.query);
 
-    let availableBoolean;
-
-    if (available !== undefined) {
-      if (available !== "true" && available !== "false") {
-        return res.status(400).json({
-          status: "error",
-          message: 'El parámetro "available" debe ser true o false'
-        });
-      }
-
-      availableBoolean = available === "true";
-    }
-
-    const payload = await servicesService.getServices({
-      category,
-      available: availableBoolean
-    });
+    // Links de navegación: si no hay página anterior/siguiente, null.
+    // Usamos result.limit (el que efectivamente aplicó paginate) para
+    // que el link mantenga el mismo tamaño de página.
+    const prevLink = result.hasPrevPage
+      ? `/api/services?page=${result.prevPage}&limit=${result.limit}`
+      : null;
+    const nextLink = result.hasNextPage
+      ? `/api/services?page=${result.nextPage}&limit=${result.limit}`
+      : null;
 
     res.status(200).json({
-      status: "success",
-      payload
+      status: 'success',
+      payload: result.docs,
+      totalPages: result.totalPages,
+      page: result.page,
+      hasPrevPage: result.hasPrevPage,
+      hasNextPage: result.hasNextPage,
+      prevPage: result.prevPage,
+      nextPage: result.nextPage,
+      prevLink,
+      nextLink,
     });
-
   } catch (error) {
-    res.status(500).json({
-      status: "error",
-      message: error.message
-    });
+    res.status(error.statusCode ?? 500).json({ status: 'error', message: error.message });
   }
 };
 

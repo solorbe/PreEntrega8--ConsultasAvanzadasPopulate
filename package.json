@@ -1,5 +1,5 @@
 {
-  "name": "PreEntrega7-HandlebarsWebSockets",
+  "name": "PreEntrega8-ConsultasAvanzadasPopulate",
   "version": "1.0.0",
   "description": "",
   "main": "src/server.js",
@@ -16,7 +16,9 @@
     "express": "^5.2.1",
     "express-handlebars": "^9.0.1",
     "mongoose": "^9.10.1",
-    "socket.io": "^4.8.4"
+    "mongoose-paginate-v2": "^1.9.5",
+    "socket.io": "^4.8.4",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
